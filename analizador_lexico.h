@@ -1,0 +1,21 @@
+#ifndef ANALIZADORLEXICO_H
+#define ANALIZADORLEXICO_H
+
+typedef enum {
+    TOKEN_ID, TOKEN_NUM, TOKEN_OP, TOKEN_ASSIGN, TOKEN_SEMICOLON,
+    TOKEN_BEGIN, TOKEN_END, TOKEN_IF, TOKEN_THEN, TOKEN_ELSE, TOKEN_WHILE, TOKEN_DO,
+    TOKEN_FOR, TOKEN_TO, TOKEN_DOWNTO, TOKEN_REPEAT, TOKEN_UNTIL,
+    TOKEN_VAR, TOKEN_INTEGER, TOKEN_REAL, TOKEN_BOOLEAN, TOKEN_PROCEDURE, TOKEN_FUNCTION,
+    TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_DOT, TOKEN_EOF
+} TokenType;
+
+typedef struct {
+    TokenType type;
+    char text[50];
+} Token;
+
+void initLexer(const char *source);
+void nextToken();
+Token getCurrentToken();
+
+#endif

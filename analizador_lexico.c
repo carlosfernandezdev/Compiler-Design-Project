@@ -1,61 +1,86 @@
 #include "analizador_lexico.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
+#include <string.h>
+#include <stdlib.h>
 
-const char *input;
-Token currentToken;
+static FILE *sourceFile;
+extern Token currentToken;
 
-void initLexer(const char *source) {
-    input = source;
-    nextToken();
+const char *keywords[] = {"program", "var", "begin", "end", "integer", "real", "boolean", "if", "then", "else", "while", "do", "for", "to", "downto", "repeat", "until", "procedure", "function", "write", "writeln", "read", "readln"};
+const char *operators[] = {":=", "+", "-", "*", "/", "=", "<>", "<", "<=", ">", ">=", "and", "or", "not"};
+
+void initLexer(const char *filename) {
+    sourceFile = fopen(filename, "r");
+    if (!sourceFile) {
+        perror("Error al abrir el archivo");
+        return;
+    }
 }
 
-void nextToken() {
-    while (*input == ' ') input++;
-
-    if (isdigit(*input)) { 
-        int i = 0;
-        while (isdigit(*input)) currentToken.text[i++] = *input++;
-        currentToken.text[i] = '\0';
-        currentToken.type = TOKEN_NUM;
-        return;
-    }
-
-    if (isalpha(*input)) { 
-        int i = 0;
-        while (isalnum(*input)) currentToken.text[i++] = *input++;
-        currentToken.text[i] = '\0';
-
-        if (strcmp(currentToken.text, "begin") == 0) currentToken.type = TOKEN_BEGIN;
-        else if (strcmp(currentToken.text, "end") == 0) currentToken.type = TOKEN_END;
-        else if (strcmp(currentToken.text, "if") == 0) currentToken.type = TOKEN_IF;
-        else if (strcmp(currentToken.text, "while") == 0) currentToken.type = TOKEN_WHILE;
-        else if (strcmp(currentToken.text, "var") == 0) currentToken.type = TOKEN_VAR;
-        else currentToken.type = TOKEN_ID;
-        return;
-    }
-
-    if (*input == ':') { 
-        if (*(input + 1) == '=') {
-            strcpy(currentToken.text, ":=");
-            currentToken.type = TOKEN_ASSIGN;
-            input += 2;
-            return;
+int isKeyword(const char *word) {
+    for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); i++) {
+        if (strcmp(word, keywords[i]) == 0) {
+            return 1;
         }
     }
-
-    if (*input == ';') { 
-        currentToken.text[0] = *input++;
-        currentToken.text[1] = '\0';
-        currentToken.type = TOKEN_SEMICOLON;
-        return;
-    }
-
-    currentToken.type = TOKEN_EOF;
+    return 0;
 }
 
-Token getCurrentToken() {
+int isOperator(const char *op) {
+    for (size_t i = 0; i < sizeof(operators) / sizeof(operators[0]); i++) {
+        if (strcmp(op, operators[i]) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+Token getNextToken() {
+    int c;
+    while ((c = fgetc(sourceFile)) != EOF) {
+        if (isspace(c)) continue;
+
+        if (isalpha(c)) {
+            int i = 0;
+            do {
+                currentToken.text[i++] = c;
+                c = fgetc(sourceFile);
+            } while (isalnum(c) && i < (int)(sizeof(currentToken.text) - 1));
+            ungetc(c, sourceFile);
+            currentToken.text[i] = '\0';
+            currentToken.type = isKeyword(currentToken.text) ? TOKEN_KEYWORD : TOKEN_ID;
+            return currentToken;
+        }
+
+        if (isdigit(c)) {
+            int i = 0;
+            do {
+                currentToken.text[i++] = c;
+                c = fgetc(sourceFile);
+            } while (isdigit(c) && i < (int)(sizeof(currentToken.text) - 1));
+            ungetc(c, sourceFile);
+            currentToken.text[i] = '\0';
+            currentToken.type = TOKEN_NUM;
+            return currentToken;
+        }
+
+        if (c == ',' || c == ';' || c == ':' || c == '.') {
+            currentToken.type = TOKEN_SYMBOL;
+            snprintf(currentToken.text, sizeof(currentToken.text), "%c", c);
+            return currentToken;
+        }
+
+        currentToken.text[0] = c;
+        currentToken.text[1] = '\0';
+        currentToken.type = TOKEN_SYMBOL;
+        return currentToken;
+    }
+    currentToken.type = TOKEN_EOF;
+    strcpy(currentToken.text, "EOF");
     return currentToken;
+}
+
+void closeLexer() {
+    if (sourceFile) fclose(sourceFile);
 }
